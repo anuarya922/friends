@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .preview-img {
+            width: 200px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h2>Upload Image 📸</h2>
+    <div class="container">
+        <input type="file" id="file-input" accept="image/*">
+        <button id="upload-btn">Upload</button>
+        <p id="upload-message"></p>
+        <img id="preview" class="preview-img">
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"></script>
+
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA5QTxUgIaPed5GhTzZIir6cGVv2xD1EkA",
+            authDomain: "quizapp-ff9e6.firebaseapp.com",
+            databaseURL: "https://quizapp-ff9e6-default-rtdb.firebaseio.com",
+            projectId: "quizapp-ff9e6",
+            storageBucket: "quizapp-ff9e6.firebasestorage.app",
+            messagingSenderId: "1088419575071",
+            appId: "1:1088419575071:web:ebd7b71e37a8f6eeb5ac2a"
+        };
+
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const storage = firebase.storage();
+        const database = firebase.database();
+
+        const fileInput = document.getElementById("file-input");
+        const uploadButton = document.getElementById("upload-btn");
+        const messageElement = document.getElementById("upload-message");
+        const previewImage = document.getElementById("preview");
+
+        // Preview Image Before Upload
+        fileInput.addEventListener("change", function() {
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    previewImage.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        uploadButton.addEventListener("click", function () {
+            const file = fileInput.files[0];
+
+            if (!file) {
+                messageElement.style.color = "red";
+                messageElement.innerText = "❌ Please select a file to upload!";
+                return;
+            }
+
+            messageElement.style.color = "blue";
+            messageElement.innerText = "⏳ Uploading... Please wait.";
+
+            const storageRef = storage.ref(`images/${file.name}`);
+            const uploadTask = storageRef.put(file);
+
+            uploadTask.on("state_changed",
+                (snapshot) => {
+                    let progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    messageElement.innerText = `⏳ Uploading... ${Math.round(progress)}% completed`;
+                },
+                (error) => {
+                    console.error("Upload failed:", error);
+                    messageElement.style.color = "red";
+                    messageElement.innerText = "❌ Upload failed: " + error.message;
+                },
+                () => {
+                    uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                        // ✅ Store in Realtime Database
+                        database.ref("images").push({
+                            imageUrl: downloadURL
+                        });
+
+                        messageElement.style.color = "green";
+                        messageElement.innerText = "✅ Upload successful!";
+                    });
+                }
+            );
+        });
+    </script>
+</body>
+</html>
